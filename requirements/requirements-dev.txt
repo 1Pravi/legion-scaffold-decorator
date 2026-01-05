@@ -1,0 +1,10 @@
+# Development and testing dependencies
+setuptools>=43.0.0
+build>=0.10.0
+wheel>=0.41.2
+pytest==8.0.0
+pytest-cov>=4.0
+black==25.9.0
+flake8==7.3.0
+pre-commit==4.2.0
+mypy==1.18.2

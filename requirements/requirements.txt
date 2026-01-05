@@ -1,0 +1,4 @@
+# RDKit chemistry toolkit
+# Prefer installing RDKit via conda: `conda install -c conda-forge rdkit`
+# If using pip, `rdkit-pypi` provides manylinux wheels for Linux
+rdkit>=2025.3.5
