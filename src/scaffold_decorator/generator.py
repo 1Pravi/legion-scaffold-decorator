@@ -14,6 +14,7 @@ from typing import List
 from typing import Optional
 from typing import Tuple
 
+from .adaptive_sampler import BanditSampler
 from .decorator import decorate_scaffold
 from .utils.io import load_smiles_from_csv
 from .utils.io import save_results_chunk
@@ -63,8 +64,11 @@ def generate_random_molecules(
     n_molecules: int,
     randomize_scaffolds: bool = True,
     randomize_decorations: bool = True,
+    strategy: str = "uniform",
+    usage_penalty: float = 0.0,
+    seed: Optional[int] = None,
 ) -> List[Tuple[str, Tuple[str, str], Optional[str]]]:
-    """Generate N random decorated molecules.
+    """Generate N random decorated molecules using adaptive sampling.
 
     Args:
         scaffolds: List of scaffold SMILES strings.
@@ -75,29 +79,53 @@ def generate_random_molecules(
                              If False, use scaffolds in order (cycling if needed).
         randomize_decorations: If True, randomly sample decorations each time.
                                If False, use decorations systematically.
-        logger: Logger instance for logging.
+        strategy: Sampling strategy ('uniform', 'thompson', 'ucb').
+        usage_penalty: Penalty factor for usage count to promote diversity.
+        seed: Random seed for reproducibility.
+
     Returns:
         List of tuples containing (scaffold, decorations, result_smiles).
     """
     results = []
 
+    # Initialize samplers
+    # Note: seed is set once here if provided. BanditSampler uses global random state.
+    if seed is not None:
+        import random
+        random.seed(seed)
+
+    scaffold_sampler = BanditSampler(strategy, usage_penalty)
+    left_sampler = BanditSampler(strategy, usage_penalty)
+    right_sampler = BanditSampler(strategy, usage_penalty)
+
     for i in range(n_molecules):
         # Select scaffold
         if randomize_scaffolds:
-            scaffold = choice(scaffolds)  # nosec B311 - not cryptographic use
+            scaffold = scaffold_sampler.sample(scaffolds)
         else:
             scaffold = scaffolds[i % len(scaffolds)]
 
         # Select decorations
         if randomize_decorations:
-            left_dec = choice(left_decorations)  # nosec B311 - not cryptographic use
-            right_dec = choice(right_decorations)  # nosec B311 - not cryptographic use
+            left_dec = left_sampler.sample(left_decorations)
+            right_dec = right_sampler.sample(right_decorations)
         else:
             left_dec = left_decorations[i % len(left_decorations)]
             right_dec = right_decorations[i % len(right_decorations)]
 
         decorations = (left_dec, right_dec)
         result_smiles = decorate_scaffold(scaffold, list(decorations))
+
+        # Feedback to samplers
+        is_success = result_smiles is not None
+
+        if randomize_scaffolds:
+            scaffold_sampler.update(scaffold, is_success)
+
+        if randomize_decorations:
+            left_sampler.update(left_dec, is_success)
+            right_sampler.update(right_dec, is_success)
+
         results.append((scaffold, decorations, result_smiles))
 
     return results

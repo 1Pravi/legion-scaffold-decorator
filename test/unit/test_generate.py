@@ -286,3 +286,50 @@ def test_generate_random_molecules_large_n():
     )
 
     assert len(results) == 100
+
+
+def test_generate_random_molecules_thompson():
+    """Test random generation with Thompson Sampling strategy."""
+    scaffolds = ["c1ccc([*:1])cc1", "[*:1]c1ccccc1"]
+    left_decorations = ["[*:1]C", "[*:1]O"]
+    right_decorations = ["[*:1]N"]
+    n_molecules = 10
+
+    results = generate_random_molecules(
+        scaffolds=scaffolds,
+        left_decorations=left_decorations,
+        right_decorations=right_decorations,
+        n_molecules=n_molecules,
+        strategy="thompson",
+        usage_penalty=0.1,
+        seed=42
+    )
+
+    assert len(results) == 10
+    # Verify structure
+    for scaffold, decorations, result_smiles in results:
+        assert scaffold in scaffolds
+        assert decorations[0] in left_decorations
+
+
+def test_generate_random_with_seed():
+    """Test that seed produces reproducible results."""
+    scaffolds = ["c1ccc([*:1])cc1", "[*:1]c1ccccc1"]
+    left_decorations = ["[*:1]C", "[*:1]O"]
+    right_decorations = ["[*:1]N"]
+
+    # Run 1
+    results1 = generate_random_molecules(
+        scaffolds, left_decorations, right_decorations,
+        n_molecules=10, strategy="thompson", seed=123
+    )
+
+    # Run 2
+    results2 = generate_random_molecules(
+        scaffolds, left_decorations, right_decorations,
+        n_molecules=10, strategy="thompson", seed=123
+    )
+
+    # Should be identical
+    assert results1 == results2
+

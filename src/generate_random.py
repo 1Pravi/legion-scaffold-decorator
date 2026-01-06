@@ -3,6 +3,7 @@
 import argparse
 import logging
 import os
+import time
 
 from scaffold_decorator.generator import generate_random_molecules
 from scaffold_decorator.utils.io import load_smiles_from_csv
@@ -66,6 +67,25 @@ def main():
         action="store_true",
         help="Don't randomize decoration selection (use systematically)",
     )
+    parser.add_argument(
+        "--sampling",
+        type=str,
+        default="uniform",
+        choices=["uniform", "thompson", "ucb"],
+        help="Sampling strategy: 'uniform', 'thompson', or 'ucb' (bandit algorithms)",
+    )
+    parser.add_argument(
+        "--usage-penalty",
+        type=float,
+        default=0.0,
+        help="Penalty factor for repeated item usage (to promote diversity)",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=None,
+        help="Random seed for reproducibility",
+    )
 
     args = parser.parse_args()
 
@@ -88,7 +108,8 @@ def main():
     logger.info(f"Loaded {len(right_decorations)} right decorations")
 
     # Generate random molecules
-    logger.info(f"Generating {args.n_molecules} random molecules...")
+    logger.info(f"Generating {args.n_molecules} random molecules using {args.sampling} sampling...")
+    start_time = time.time()
     results = generate_random_molecules(
         scaffolds=scaffolds,
         left_decorations=left_decorations,
@@ -96,7 +117,13 @@ def main():
         n_molecules=args.n_molecules,
         randomize_scaffolds=not args.no_randomize_scaffolds,
         randomize_decorations=not args.no_randomize_decorations,
+        strategy=args.sampling,
+        usage_penalty=args.usage_penalty,
+        seed=args.seed,
     )
+    end_time = time.time()
+    duration = end_time - start_time
+    throughput = len(results) / duration if duration > 0 else 0
 
     # Save results
     logger.info(f"Saving results to {args.output}...")
@@ -108,9 +135,10 @@ def main():
     failed = len(results) - successful
     logger.info(
         f"Generation complete: {successful:,} successful, "
-        f"{failed:,} failed out of {len(results):,} total"
+        f"{failed:,} failed out of {len(results):,} total in {duration:.2f}s"
     )
     logger.info(f"Success rate: {successful / len(results) * 100:.2f}%")
+    logger.info(f"Throughput: {throughput:.2f} molecules/sec")
 
 
 if __name__ == "__main__":

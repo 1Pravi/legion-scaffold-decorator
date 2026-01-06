@@ -60,6 +60,17 @@ generate-random \
     --no-randomize-scaffolds \
     --no-randomize-decorations
 
+# Adaptive generation with custom parameters
+generate-random \
+    --scaffolds-csv <path to scaffolds csv> \
+    --left-decorations-csv <path to left decorations csv> \
+    --right-decorations-csv <path to right decorations csv> \
+    --n-molecules 100 \
+    --output <path to output csv> \
+    --sampling thompson \
+    --usage-penalty 0.1 \
+    --seed 42
+
 # Systematic generation with custom parameters
 generate \
     --scaffolds-csv <path to scaffolds csv> \
@@ -96,6 +107,30 @@ generate \
 | `--decorations-sample-size` | Number of decorations to sample | `64` |
 | `--save-every` | Save results every N scaffolds | `10` |
 | `--no-shuffle` | Don't shuffle scaffolds | `False` |
+
+
+
+### Adaptive Generation (New)
+
+The random generator now supports intelligent sampling using Multi-Armed Bandit algorithms to prioritize valid and unique molecules.
+
+```bash
+# Standard Uniform Random (Default)
+generate-random -n 1000 --sampling uniform
+
+# Thompson Sampling (Adaptive)
+generate-random -n 1000 --sampling thompson --usage-penalty 0.1
+```
+
+| Parameter | Description | Default |
+|-----------|-------------|---------|
+| `--sampling` | Strategy: `uniform` (default), `thompson`, `ucb` | `uniform` |
+| `--usage-penalty` | Penalize repeated usage to ensure diversity (0.0 - 1.0) | `0.0` |
+| `--seed` | Random seed for reproducibility | `None` |
+
+**When to use?**
+*   **Uniform**: Best for clean, high-quality datasets.
+*   **Thompson/UCB**: Best for "noisy" datasets (many invalid combinations) or exploring difficult chemical spaces. It learns to avoid failures.
 
 
 ## 📋 Data Format
